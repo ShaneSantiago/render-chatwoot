@@ -1,0 +1,48 @@
+services:
+  - type: pserv
+    name: chatwoot-postgres
+    env: docker
+    plan: starter
+    dockerfilePath: Dockerfile.postgres
+    dockerContext: .
+    disk:
+      name: postgres-data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 1
+    envVars:
+      - key: POSTGRES_DB
+        value: chatwoot
+      - key: POSTGRES_USER
+        value: postgres
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+
+  - type: pserv
+    name: chatwoot-redis
+    env: docker
+    plan: starter
+    dockerfilePath: Dockerfile.redis
+    dockerContext: .
+    disk:
+      name: redis-data
+      mountPath: /data
+      sizeGB: 1
+
+  - type: web
+    name: chatwoot
+    env: docker
+    plan: starter
+    dockerContext: .
+    dockerfilePath: Dockerfile.chatwoot
+    envVars:
+      - key: FRONTEND_URL
+        sync: false
+      - key: SECRET_KEY_BASE
+        generateValue: true
+      - key: POSTGRES_HOST
+        fromService:
+          name: chatwoot-postgres
+          type: pserv
+          property: host
+      - key: REDIS_URL
+        value: redis://chatwoot-redis:6379

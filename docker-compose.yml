@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    restart: always
+    networks:
+      - chatwoot-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=chatwoot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=@Shane5799
+
+  redis:
+    image: redis:alpine
+    restart: always
+    networks:
+      - chatwoot-network
+    volumes:
+      - redis_data:/data
+
+  chatwoot:
+    image: chatwoot/chatwoot:latest
+    restart: always
+    networks:
+      - chatwoot-network
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=@Shane5799
+      - POSTGRES_DATABASE=chatwoot
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY_BASE=D913f5cZNe7iKbjTPAO0tpECMJUSVqmoLHyIzvYF6RgsGBn2XQrwa8ldxukhW4
+      - FRONTEND_URL=https://dae75975432c.ngrok-free.app
+      - FORCE_SSL=false
+      - RAILS_MAX_THREADS=5
+    entrypoint: >
+      sh -c "
+      bundle exec rails db:chatwoot_prepare &&
+      bundle exec rails server -b 0.0.0.0 -p 3000
+      "
+
+  sidekiq:
+    image: chatwoot/chatwoot:latest
+    restart: always
+    networks:
+      - chatwoot-network
+    depends_on:
+      - postgres
+      - redis
+      - chatwoot
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=@Shane5799
+      - POSTGRES_DATABASE=chatwoot
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY_BASE=D913f5cZNe7iKbjTPAO0tpECMJUSVqmoLHyIzvYF6RgsGBn2XQrwa8ldxukhW4
+    command: bundle exec sidekiq -C config/sidekiq.yml
+
+networks:
+  chatwoot-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
